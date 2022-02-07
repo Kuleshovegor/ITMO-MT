@@ -1,0 +1,190 @@
+@grammar equations;
+
+@imports {
+    import java.util.Map;
+    import java.util.List;
+    import java.util.HashMap;
+    import org.antlr.v4.runtime.misc.Pair;
+    import exceptions.EvaluationException;
+}
+
+equations @returns [List<Pair<String, Double>> evals; Map<String, Double> variableToDouble] =
+    {
+    result.variableToDouble = new HashMap<>();
+    result.evals = new ArrayList<>();
+    } variable equationsAfterVar[arg0.var, result.evals, result.variableToDouble] EXPRESSION_END
+     moreEquations[result.evals, result.variableToDouble] EOF
+    |{
+         result.variableToDouble = new HashMap<>();
+         result.evals = new ArrayList<>();
+     } expressionWithoutVar[result.variableToDouble] EXPRESSION_END
+      {result.evals.add(new Pair<String,Double>(null, arg0.result)); }
+      moreEquations[result.evals, result.variableToDouble] EOF;
+
+equationsAfterVar [String var, List<Pair<String, Double>> evals, Map<String, Double> variableToDouble]
+    =
+    equationAfterVar[var, variableToDouble]
+    { evals.add(new Pair<String,Double>(var, arg0.value)); }
+    | {
+          Double resultEv;
+
+          if (!variableToDouble.containsKey(var))
+              throw new EvaluationException("Variable does not exists " + arg0.var);
+
+
+          resultEv = variableToDouble.get(var);
+    } expressionAfterVar[resultEv, variableToDouble]
+    {evals.add(new Pair<String,Double>(null, arg0.result)); };
+
+moreEquations [List<Pair<String, Double>> evals, Map<String, Double> variableToDouble] =
+    variable equationsAfterVar[arg0.var, evals, variableToDouble] EXPRESSION_END
+    moreEquations[evals, variableToDouble]
+    | expressionWithoutVar[variableToDouble] EXPRESSION_END
+      {evals.add(new Pair<String,Double>(null, arg0.result)); }
+      moreEquations[evals, variableToDouble]
+    | EPS;
+
+equationAfterVar[String var, Map<String, Double> variableToDouble] @returns [Double value] =
+    EQ expression[variableToDouble] {
+    result.value = arg1.result;
+    variableToDouble.put(var, arg1.result);
+    }
+    ;
+
+expressionAfterVar [Double tek, Map<String, Double> variableToDouble] @returns [Double result]
+    = {result.result = tek}
+    moreTerm[variableToDouble, result.result]
+    {
+        if (arg0.result != null)
+            result.result = arg0.result;
+    }
+    moreExpression[variableToDouble, result.result]
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+    | EPS
+    ;
+
+expression [Map<String, Double> variableToDouble] @returns [Double result]
+    = term[variableToDouble] { result.result = arg0.result; }
+    moreExpression[variableToDouble, result.result]
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+    ;
+
+moreExpression[Map<String, Double> variableToDouble, Double currentResult] @returns [Double result]
+    = PLUS term[variableToDouble] { result.result = currentResult + arg1.result; }
+     moreExpression[variableToDouble, result.result]
+     {
+     if (arg2.result != null)
+        result.result = arg2.result;
+     }
+    | MINUS term[variableToDouble] { result.result = currentResult - arg1.result; }
+     moreExpression[variableToDouble, result.result]
+     {
+     if (arg2.result != null)
+             result.result = arg2.result;
+     }
+    | EPS
+    ;
+
+term [Map<String, Double> variableToDouble] @returns [Double result]
+   = unaryOperation[variableToDouble] { result.result = arg0.result; }
+    moreTerm[variableToDouble, result.result]
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+   ;
+
+
+moreTerm[Map<String, Double> variableToDouble, Double currentResult] @returns [Double result]
+    = MULT unaryOperation[variableToDouble] { result.result = currentResult * arg1.result; }
+     moreTerm[variableToDouble, result.result] { if (arg2.result != null) result.result = arg2.result; }
+    | DIV unaryOperation[variableToDouble] {
+        result.result = currentResult / arg1.result;
+    }
+    moreTerm[variableToDouble, result.result] { if (arg2.result != null) result.result = arg2.result; }
+    | EPS
+    ;
+
+unaryOperation [Map<String, Double> variableToDouble] @returns [Double result]
+    = atom[variableToDouble] { result.result = arg0.result; }
+    | MINUS atom[variableToDouble] { result.result = -arg1.result; }
+    ;
+
+atom [Map<String, Double> variableToDouble] @returns [Double result]
+    = positiveDoubleNumber { result.result = arg0.result; }
+    | variable {
+        if (!variableToDouble.containsKey(arg0.var))
+            throw new EvaluationException("Variable does not exists " + arg0.var);
+
+
+        result.result = variableToDouble.get(arg0.var);
+    }
+    | OPEN_BRACKET expression[variableToDouble] CLOSE_BRACKET { result.result = arg1.result; }
+    ;
+
+expressionWithoutVar [Map<String, Double> variableToDouble] @returns [Double result]
+    = termWithoutVar[variableToDouble] { result.result = arg0.result; }
+    moreExpression[variableToDouble, result.result]
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+    ;
+
+termWithoutVar [Map<String, Double> variableToDouble] @returns [Double result]
+   = unaryOperationWithoutVar[variableToDouble] { result.result = arg0.result; }
+    moreTerm[variableToDouble, result.result]
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+   ;
+
+unaryOperationWithoutVar [Map<String, Double> variableToDouble] @returns [Double result]
+    = atomWithoutVar[variableToDouble] { result.result = arg0.result; }
+    | MINUS atomWithoutVar[variableToDouble] { result.result = -arg1.result; }
+    ;
+
+atomWithoutVar [Map<String, Double> variableToDouble] @returns [Double result]
+    = positiveDoubleNumber { result.result = arg0.result; }
+    | OPEN_BRACKET expression[variableToDouble] CLOSE_BRACKET { result.result = arg1.result; }
+    ;
+
+positiveDoubleNumber @returns [Double result]
+    = DOUBLE { result.result = Double.valueOf(arg0); }
+    ;
+
+variable @returns [String var]
+    = VARIABLE { result.var = arg0; }
+    ;
+
+eof
+    = EOF
+    ;
+
+OPEN_BRACKET= "\\(";
+
+
+CLOSE_BRACKET= "\\)";
+
+PLUS= "\\+";
+
+MINUS= "-";
+
+MULT= "\\*";
+
+DIV= "/";
+
+EQ= "=";
+
+EXPRESSION_END= ";";
+
+DOUBLE= "[0-9]+(\\.[0-9]+(E(-)?[0-9]+)?)?";
+
+VARIABLE= "[a-zA-Z][[a-zA-Z][0-9]_]*";

@@ -1,0 +1,18 @@
+S  -> ES'
+S' -> eps
+S' -> xor ES'
+E  -> TE'
+E' -> eps
+E' -> or TE'
+T  -> MT'
+T' -> and MT'
+T' -> eps
+M  -> not M
+M -> H
+H  -> PH'
+H' -> eps
+H' -> == PH'
+P  -> (S)
+P  -> c in c
+P  -> c not in c
+P  -> c

@@ -1,0 +1,10 @@
+S  -> ( not c
+S' -> e xor
+E  -> ( not c
+E' -> e or
+T  -> ( not c
+T' -> e and
+M  -> ( not c
+H  -> ( c
+H' -> e ==
+P  -> ( c

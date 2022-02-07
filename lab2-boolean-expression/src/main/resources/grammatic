@@ -1,0 +1,14 @@
+S -> E
+S -> S xor E
+E -> T
+E -> E or T
+T -> P
+T -> T and M
+M -> not M
+M -> H
+H -> P
+H -> H == P
+P -> (S)
+P -> c in c
+P -> c not in c
+P -> c

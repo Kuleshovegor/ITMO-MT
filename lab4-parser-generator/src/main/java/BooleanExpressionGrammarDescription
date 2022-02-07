@@ -1,0 +1,29 @@
+@grammar booleanExpressions;
+
+@imports {
+import java.util.Map;
+}
+
+expr = s EOF;
+s = e sPrime;
+sPrime = EPS | XOR e sPrime;
+e = t ePrime;
+ePrime = EPS | OR t ePrime;
+t = m tPrime;
+tPrime = AND m tPrime | EPS;
+m = h
+    | NOT m;
+h = p hPrime;
+hPrime = EPS | EQEQ p hPrime;
+p = LPARENT s RPARENT | VAR k;
+k = NOT IN VAR | IN VAR | EPS;
+
+XOR = "xor";
+OR = "or";
+AND = "and";
+EQEQ = "==";
+LPARENT = "\\(";
+RPARENT = "\\)";
+IN = "in";
+NOT = "not";
+VAR = "[A-Z]";

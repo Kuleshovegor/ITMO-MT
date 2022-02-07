@@ -1,0 +1,99 @@
+@grammar simpleCalculator2;
+
+@imports {
+    import exceptions.EvaluationException;
+}
+
+expression @returns [Integer result]
+    = term { result.result = arg0.result; }
+    moreExpression[result.result] EOF
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+    ;
+
+moreExpression[Integer currentResult] @returns [Integer result]
+    = PLUS term { result.result = currentResult + arg1.result; }
+     moreExpression[result.result]
+     {
+     if (arg2.result != null)
+        result.result = arg2.result;
+     }
+    | MINUS term { result.result = currentResult - arg1.result; }
+     moreExpression[result.result]
+     {
+     if (arg2.result != null)
+             result.result = arg2.result;
+     }
+    | EPS
+    ;
+
+term @returns [Integer result]
+   = pow { result.result = arg0.result; }
+    moreTerm[result.result]
+    {
+        if (arg1.result != null)
+            result.result = arg1.result;
+    }
+   ;
+
+
+moreTerm[Integer currentResult] @returns [Integer result]
+    = MULT pow { result.result = currentResult * arg1.result; }
+     moreTerm[result.result] { if (arg2.result != null) result.result = arg2.result; }
+    | DIV pow {
+        if (arg1.result.equals(0))
+            throw new IllegalArgumentException("div by zero");
+        result.result = currentResult / arg1.result;
+    }
+    moreTerm[result.result] { if (arg2.result != null) result.result = arg2.result; }
+    | EPS
+    ;
+
+pow @returns [Integer result]
+    = unaryOperation { result.result = arg0.result; }
+          morePow
+          { if (arg1.result == null)
+                                 result.result = arg0.result;
+                            else
+                                result.result = (int) Math.pow(arg0.result, arg1.result);
+                                        }
+    ;
+
+morePow @returns [Integer result]
+    = MULT MULT unaryOperation
+     morePow { if (arg3.result == null)
+                       result.result = arg2.result;
+                  else
+                      result.result = (int) Math.pow(arg2.result, arg3.result);
+                              }
+     | EPS;
+
+unaryOperation @returns [Integer result]
+    = atom { result.result = arg0.result; }
+    | MINUS atom { result.result = -arg1.result; }
+    ;
+
+atom @returns [Integer result]
+    = positiveIntNumber { result.result = arg0.result; }
+    | OPEN_BRACKET expression CLOSE_BRACKET { result.result = arg1.result; }
+    ;
+
+positiveIntNumber @returns [Integer result]
+    = INT { result.result = Integer.valueOf(arg0); }
+    ;
+
+OPEN_BRACKET= "\\(";
+
+CLOSE_BRACKET= "\\)";
+
+PLUS= "\\+";
+
+MINUS= "-";
+
+MULT= "\\*";
+
+DIV= "/";
+
+INT= "[0-9]+";
